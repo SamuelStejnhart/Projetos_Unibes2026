@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browser Fortress: Mercenary Wars</title>
+    <!-- Three.js CDN r128 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            user-select: none;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #111;
+            color: #fff;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(30,30,35,0.95), rgba(15,15,20,0.98));
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .menu-container, .select-container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 40px;
+            border: 2px solid #b8860b;
+            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+            max-width: 600px;
+            width: 90%;
+        }
+
+        h1 {
+            font-size: 3rem;
+            color: #ff4500;
+            text-shadow: 2px 2px #000;
+            letter-spacing: 2px;
+        }
+
+        h2 {
+            font-size: 1.5rem;
+            color: #dcdcdc;
+            margin-bottom: 20px;
+        }
+
+        .menu-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .tf-btn {
+            background: #b8860b;
+            color: #111;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            text-transform: uppercase;
+        }
+
+        .tf-btn:hover {
+            background: #daa520;
+            transform: scale(1.05);
+        }
+
+        .tf-btn.primary {
+            background: #ff4500;
+            color: #fff;
+            margin-top: 20px;
+        }
+
+        .tf-btn.primary:disabled {
+            background: #555;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .teams {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .team-btn {
+            padding: 15px 25px;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+
+        .team-btn.red { background: #a52a2a; color: white; }
+        .team-btn.blu { background: #4169e1; color: white; }
+        .team-btn.selected { border-color: #ffd700; transform: scale(1.05); }
+
+        .classes-grid {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .class-btn {
+            background: #333;
+            color: white;
+            border: 1px solid #777;
+            padding: 10px 15px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .class-btn.selected {
+            background: #ff4500;
+            border-color: #fff;
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            color: rgba(255, 255, 255, 0.8);
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .hud-panel {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.6);
+            border: 2px solid #444;
+            padding: 10px 20px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            z-index: 5;
+        }
+
+        .bottom-left { bottom: 20px; left: 20px; border-left: 6px solid #a52a2a; }
+        .bottom-right { bottom: 20px; right: 20px; border-right: 6px solid #4169e1; }
+        .top-center { top: 20px; left: 50%; transform: translateX(-50%); text-align: center; font-size: 1rem; }
+    </style>
+</head>
+<body>
+    <!-- Menu Inicial -->
+    <div id="main-menu" class="screen">
+        <div class="menu-container">
+            <h1>BROWSER FORTRESS</h1>
+            <h2>Mercenary Wars</h2>
+            <div class="menu-buttons">
+                <button id="btn-play" class="tf-btn">JOGAR</button>
+                <button id="btn-controls-info" class="tf-btn">CONTROLES: WASD + MOUSE + CLIQUE PARA ATIRAR</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tela de Seleção de Equipe e Classe -->
+    <div id="class-select-screen" class="screen hidden">
+        <div class="select-container">
+            <h2>ESCOLHA SUA EQUIPE E CLASSE</h2>
+            <div class="teams">
+                <button class="team-btn red" data-team="RED">EQUIPE RED</button>
+                <button class="team-btn blu" data-team="BLU">EQUIPE BLU</button>
+            </div>
+            <div class="classes-grid">
+                <button class="class-btn" data-class="scout" data-hp="100" data-speed="7">Scout (Rápido)</button>
+                <button class="class-btn" data-class="soldier" data-hp="150" data-speed="5">Soldier (Equilibrado)</button>
+                <button class="class-btn" data-class="heavy" data-hp="250" data-speed="3.5">Heavy (Tanque)</button>
+            </div>
+            <button id="btn-start-match" class="tf-btn primary" disabled>ENTRAR NA ARENA</button>
+        </div>
+    </div>
+
+    <!-- HUD de Jogo -->
+    <div id="hud" class="hidden">
+        <div id="crosshair">+</div>
+        <div class="hud-panel bottom-left">
+            <div class="health-box">SAÚDE: <span id="player-hp">100</span> / <span id="player-maxhp">100</span></div>
+        </div>
+        <div class="hud-panel bottom-right">
+            <div class="ammo-box">MUNIÇÃO: <span id="player-ammo">20</span> / <span id="player-maxammo">20</span></div>
+        </div>
+        <div class="hud-panel top-center">
+            <div id="objective-status">ELIMINE OS BOT INIMIGOS | PLACAR: RED <span id="score-red">0</span> X <span id="score-blu">0</span> BLU</div>
+        </div>
+    </div>
+
+    <!-- Tela de Resultados / Fim de Jogo -->
+    <div id="results-screen" class="screen hidden">
+        <div class="menu-container">
+            <h1 id="result-title">FIM DE PARTIDA</h1>
+            <h2 id="result-subtitle">A Equipe Vencedora foi...</h2>
+            <button id="btn-restart" class="tf-btn primary">JOGAR NOVAMENTE</button>
+        </div>
+    </div>
+
+    <!-- Container do WebGL / Three.js -->
+    <div id="canvas-container"></div>
+
+    <script>
+        // Sistema Único Integrado do Jogo
+        class BrowserFortressGame {
+            constructor() {
+                this.state = 'MENU'; // MENU, CLASS_SELECT, PLAYING, RESULTS
+                this.selectedTeam = null;
+                this.selectedClassConfig = { type: 'scout', hp: 100, speed: 7.0 };
+                
+                this.playerHP = 100;
+                this.playerMaxHP = 100;
+                this.ammo = 20;
+                this.maxAmmo = 20;
+                this.scoreRed = 0;
+                this.scoreBlu = 0;
+
+                this.keys = {};
+                this.mouse = { x: 0, y: 0, sensitivity: 0.002 };
+                this.isPointerLocked = false;
+
+                this.bots = [];
+                this.enemiesList = [];
+
+                this.initUIEvents();
+                this.initThreeEngine();
+            }
+
+            initUIEvents() {
+                document.getElementById('btn-play').addEventListener('click', () => {
+                    document.getElementById('main-menu').classList.add('hidden');
+                    document.getElementById('class-select-screen').classList.remove('hidden');
+                });
+
+                document.querySelectorAll('.team-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        document.querySelectorAll('.team-btn').forEach(b => b.classList.remove('selected'));
+                        e.target.classList.add('selected');
+                        this.selectedTeam = e.target.getAttribute('data-team');
+                        this.checkReadyToStart();
+                    });
+                });
+
+                document.querySelectorAll('.class-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        document.querySelectorAll('.class-btn').forEach(b => b.classList.remove('selected'));
+                        e.target.classList.add('selected');
+                        const type = e.target.getAttribute('data-class');
+                        const hp = parseInt(e.target.getAttribute('data-hp'));
+                        const speed = parseFloat(e.target.getAttribute('data-speed'));
+                        this.selectedClassConfig = { type, hp, speed };
+                        this.playerHP = hp;
+                        this.playerMaxHP = hp;
+                        this.checkReadyToStart();
+                    });
+                });
+
+                document.getElementById('btn-start-match').addEventListener('click', () => {
+                    document.getElementById('class-select-screen').classList.add('hidden');
+                    document.getElementById('hud').classList.remove('hidden');
+                    this.state = 'PLAYING';
+                    
+                    // Atualizar HUD inicial
+                    document.getElementById('player-hp').innerText = this.playerHP;
+                    document.getElementById('player-maxhp').innerText = this.playerMaxHP;
+
+                    // Solicitar Pointer Lock
+                    document.body.requestPointerLock();
+                });
+
+                document.getElementById('btn-restart').addEventListener('click', () => {
+                    window.location.reload();
+                });
+
+                // Listeners de Teclado e Mouse
+                window.addEventListener('keydown', (e) => { this.keys[e.code] = true; });
+                window.addEventListener('keyup', (e) => { this.keys[e.code] = false; });
+
+                document.addEventListener('pointerlockchange', () => {
+                    this.isPointerLocked = document.pointerLockElement === document.body;
+                });
+
+                document.addEventListener('mousemove', (e) => {
+                    if (this.isPointerLocked && this.state === 'PLAYING') {
+                        this.mouse.x = e.movementX * this.mouse.sensitivity;
+                        this.mouse.y = e.movementY * this.mouse.sensitivity;
+                        
+                        this.yaw -= this.mouse.x;
+                        this.pitch -= this.mouse.y;
+
+                        const limit = Math.PI / 2 - 0.05;
+                        this.pitch = Math.max(-limit, Math.min(limit, this.pitch));
+
+                        this.camera.rotation.set(0, 0, 0);
+                        this.camera.rotateY(this.yaw);
+                        this.camera.rotateX(this.pitch);
+                    }
+                });
+
+                // Disparo com Clique
+                window.addEventListener('mousedown', () => {
+                    if (this.state === 'PLAYING' && this.isPointerLocked) {
+                        this.shootWeapon();
+                    }
+                });
+            }
+
+            checkReadyToStart() {
+                if (this.selectedTeam && this.selectedClassConfig) {
+                    document.getElementById('btn-start-match').removeAttribute('disabled');
+                }
+            }
+
+            initThreeEngine() {
+                const container = document.getElementById('canvas-container');
+
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x87ceeb); // Céu estilizado Team Fortress
+
+                this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.camera.position.set(0, 2, 15);
+                this.yaw = 0;
+                this.pitch = 0;
+
+                this.renderer = new THREE.WebGLRenderer({ antialias: true });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.shadowMap.enabled = true;
+                container.appendChild(this.renderer.domElement);
+
+                // Luzes
+                const ambient = new THREE.AmbientLight(0xffffff, 0.7);
+                this.scene.add(ambient);
+
+                const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                dirLight.position.set(20, 40, 20);
+                dirLight.castShadow = true;
+                this.scene.add(dirLight);
+
+                this.buildMap();
+                this.spawnBots();
+
+                window.addEventListener('resize', () => {
+                    this.camera.aspect = window.innerWidth / window.innerHeight;
+                    this.camera.updateProjectionMatrix();
+                    this.renderer.setSize(window.innerWidth, window.innerHeight);
+                });
+
+                this.clock = new THREE.Clock();
+                this.animate();
+            }
+
+            buildMap() {
+                // Chão Industrial
+                const floorGeo = new THREE.PlaneGeometry(120, 120);
+                const floorMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.9 });
+                const floor = new THREE.Mesh(floorGeo, floorMat);
+                floor.rotation.x = -Math.PI / 2;
+                this.scene.add(floor);
+
+                // Paredes de contorno
+                const wallMat = new THREE.MeshStandardMaterial({ color: 0x8b5a2b });
+                const boxGeo = new THREE.BoxGeometry(6, 6, 6);
+
+                // Obstáculos de cobertura e caixas
+                for (let i = 0; i < 8; i++) {
+                    const box = new THREE.Mesh(boxGeo, wallMat);
+                    const angle = (i / 8) * Math.PI * 2;
+                    box.position.set(Math.cos(angle) * 25, 3, Math.sin(angle) * 25);
+                    this.scene.add(box);
+                }
+            }
+
+            spawnBots() {
+                // Criar 4 bots inimigos para simular a partida
+                const botGeo = new THREE.BoxGeometry(1.5, 3, 1.5);
+                const botMat = new THREE.MeshStandardMaterial({ color: 0xdc143c }); // Vermelho ou Azul oposto
+
+                for (let i = 0; i < 4; i++) {
+                    const botMesh = new THREE.Mesh(botGeo, botMat);
+                    const posX = (Math.random() - 0.5) * 40;
+                    const posZ = (Math.random() - 0.5) * 40 - 15;
+                    botMesh.position.set(posX, 1.5, posZ);
+                    this.scene.add(botMesh);
+
+                    const botData = {
+                        mesh: botMesh,
+                        hp: 80,
+                        speed: 3.5,
+                        patrolTarget: new THREE.Vector3((Math.random() - 0.5) * 40, 1.5, (Math.random() - 0.5) * 40)
+                    };
+                    this.bots.push(botData);
+                    this.enemiesList.push(botMesh);
+                }
+            }
+
+            shootWeapon() {
+                if (this.ammo <= 0) return;
+                this.ammo--;
+                document.getElementById('player-ammo').innerText = this.ammo;
+
+                const raycaster = new THREE.Raycaster();
+                raycaster.setFromCamera(new THREE.Vector2(0, 0), this.camera);
+                const intersects = raycaster.intersectObjects(this.enemiesList, true);
+
+                if (intersects.length > 0) {
+                    const hitObj = intersects[0].object;
+                    const botIndex = this.bots.findIndex(b => b.mesh === hitObj);
+                    if (botIndex !== -1) {
+                        this.bots[botIndex].hp -= 40;
+                        // Feedback visual de dano no bot (piscar branco)
+                        hitObj.material.color.setHex(0xffffff);
+                        setTimeout(() => { if(hitObj.material) hitObj.material.color.setHex(0xdc143c); }, 100);
+
+                        if (this.bots[botIndex].hp <= 0) {
+                            this.scene.remove(hitObj);
+                            this.enemiesList.splice(this.enemiesList.indexOf(hitObj), 1);
+                            this.bots.splice(botIndex, 1);
+                            
+                            if (this.selectedTeam === 'RED') this.scoreRed++; else this.scoreBlu++;
+                            document.getElementById('score-red').innerText = this.scoreRed;
+                            document.getElementById('score-blu').innerText = this.scoreBlu;
+
+                            // Checar vitória
+                            if (this.bots.length === 0) {
+                                this.endGame('Vitória da Equipe ' + this.selectedTeam + '!');
+                            }
+                        }
+                    }
+                }
+            }
+
+            endGame(message) {
+                this.state = 'RESULTS';
+                document.exitPointerLock();
+                document.getElementById('hud').classList.add('hidden');
+                document.getElementById('result-subtitle').innerText = message;
+                document.getElementById('results-screen').classList.remove('hidden');
+            }
+
+            updatePlayer(deltaTime) {
+                const moveDir = new THREE.Vector3();
+                const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), this.yaw);
+                const right = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), this.yaw);
+
+                if (this.keys['KeyW']) moveDir.add(forward);
+                if (this.keys['KeyS']) moveDir.sub(forward);
+                if (this.keys['KeyA']) moveDir.sub(right);
+                if (this.keys['KeyD']) moveDir.add(right);
+
+                moveDir.normalize();
+                this.camera.position.addScaledVector(moveDir, this.selectedClassConfig.speed * deltaTime);
+                this.camera.position.y = 2.0; // Altura fixa de câmera FPS
+            }
+
+            updateBots(deltaTime) {
+                for (const bot of this.bots) {
+                    const dir = new THREE.Vector3().subVectors(bot.patrolTarget, bot.mesh.position);
+                    if (dir.length() < 2) {
+                        bot.patrolTarget.set((Math.random() - 0.5) * 40, 1.5, (Math.random() - 0.5) * 40);
+                    } else {
+                        dir.normalize();
+                        bot.mesh.position.addScaledVector(dir, bot.speed * deltaTime);
+                        bot.mesh.lookAt(bot.patrolTarget);
+                    }
+
+                    // IA básica de ataque ao jogador se aproximar
+                    if (bot.mesh.position.distanceTo(this.camera.position) < 15) {
+                        bot.mesh.lookAt(this.camera.position.x, bot.mesh.position.y, this.camera.position.z);
+                        if (Math.random() < 0.02) {
+                            this.playerHP -= 5;
+                            document.getElementById('player-hp').innerText = Math.max(0, this.playerHP);
+                            if (this.playerHP <= 0) {
+                                this.endGame('Derrota! Você foi eliminado.');
+                            }
+                        }
+                    }
+                }
+            }
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+
+                const deltaTime = this.clock.getDelta();
+
+                if (this.state === 'PLAYING') {
+                    this.updatePlayer(deltaTime);
+                    this.updateBots(deltaTime);
+                }
+
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+
+        // Inicializar aplicação ao carregar a página
+        window.addEventListener('DOMContentLoaded', () => {
+            new BrowserFortressGame();
+        });
+    </script>
+</body>
+</html>
